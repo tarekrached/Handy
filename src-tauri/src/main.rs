@@ -36,5 +36,8 @@ fn main() {
     }
 
     let cli_args = CliArgs::parse();
+    // Local fork: an upstream update would replace this build with one that
+    // lacks the fork's changes, so never offer one.
+    std::env::set_var("HANDY_DISABLE_UPDATER", "1");
     handy_app_lib::run(cli_args)
 }
