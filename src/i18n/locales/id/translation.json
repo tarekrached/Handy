@@ -3,6 +3,7 @@
     "settings": "Pengaturan...",
     "checkUpdates": "Periksa Pembaruan...",
     "copyLastTranscript": "Salin Transkripsi Terakhir",
+    "pasteLastTranscript": "Paste Last Transcript",
     "unloadModel": "Keluarkan Model dari Memori",
     "model": "Model",
     "quit": "Keluar",

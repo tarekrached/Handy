@@ -689,6 +689,13 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
         true,
         None::<&str>,
     )?;
+    let paste_last_transcript_i = MenuItem::with_id(
+        app,
+        "paste_last_transcript",
+        &strings.paste_last_transcript,
+        true,
+        None::<&str>,
+    )?;
     let quit_i = MenuItem::with_id(app, "quit", &strings.quit, true, quit_accelerator)?;
     let separator = || PredefinedMenuItem::separator(app);
 
@@ -702,6 +709,7 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
                 &cancel_i,
                 &separator()?,
                 &copy_last_transcript_i,
+                &paste_last_transcript_i,
                 &separator()?,
                 &settings_i,
                 &check_updates_i,
@@ -741,6 +749,7 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
                 &version_i,
                 &separator()?,
                 &copy_last_transcript_i,
+                &paste_last_transcript_i,
                 &separator()?,
                 &model_submenu,
                 &unload_model_i,
@@ -751,9 +760,9 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
                 &quit_i,
             ],
         )?;
-        // Right below the model submenu: version, separator, copy, separator, model.
+        // Right below the model submenu: version, separator, copy, paste, separator, model.
         if let Some(language) = &inputs.language {
-            menu.insert(&language_submenu(app, &strings, language)?, 5)?;
+            menu.insert(&language_submenu(app, &strings, language)?, 6)?;
         }
         menu
     };
@@ -829,28 +838,37 @@ pub fn recreate_tray_icon(app: &AppHandle) {
     }
 }
 
-pub fn copy_last_transcript(app: &AppHandle) {
+/// Text of the latest completed transcription (post-processed when present),
+/// or `None` when there is nothing usable. `action` names the caller in logs.
+fn latest_transcript(app: &AppHandle, action: &str) -> Option<String> {
     let history_manager = app.state::<Arc<HistoryManager>>();
     let entry = match history_manager.get_latest_completed_entry() {
         Ok(Some(entry)) => entry,
         Ok(None) => {
-            warn!("No completed transcription history entries available for tray copy.");
-            return;
+            warn!("No completed transcription history entries available for tray {action}.");
+            return None;
         }
         Err(err) => {
             error!(
                 "Failed to fetch last completed transcription entry: {}",
                 err
             );
-            return;
+            return None;
         }
     };
 
     let text = last_transcript_text(&entry);
     if text.trim().is_empty() {
-        warn!("Last completed transcription is empty; skipping tray copy.");
-        return;
+        warn!("Last completed transcription is empty; skipping tray {action}.");
+        return None;
     }
+    Some(text.to_string())
+}
+
+pub fn copy_last_transcript(app: &AppHandle) {
+    let Some(text) = latest_transcript(app, "copy") else {
+        return;
+    };
 
     if let Err(err) = app.clipboard().write_text(text) {
         error!("Failed to copy last transcript to clipboard: {}", err);
@@ -858,6 +876,31 @@ pub fn copy_last_transcript(app: &AppHandle) {
     }
 
     info!("Copied last transcript to clipboard via tray.");
+}
+
+/// Pastes the latest transcript into the focused app, through the same path a
+/// dictation uses (paste method, trailing space, clipboard handling). Handy is
+/// an accessory app, so choosing the tray item leaves the previous app focused.
+pub fn paste_last_transcript(app: &AppHandle) {
+    let Some(text) = latest_transcript(app, "paste") else {
+        return;
+    };
+
+    let app = app.clone();
+    // `paste` sleeps between steps and must stay off the main thread.
+    std::thread::spawn(move || {
+        // Let the menu finish closing so keystrokes reach the focused app.
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        match crate::clipboard::paste(text, app) {
+            Ok(crate::clipboard::PasteOutcome::Pasted) => {
+                info!("Pasted last transcript via tray.")
+            }
+            Ok(crate::clipboard::PasteOutcome::Blocked) => {
+                warn!("Last transcript not pasted via tray: the focused window takes no input from Handy.")
+            }
+            Err(err) => error!("Failed to paste last transcript via tray: {}", err),
+        }
+    });
 }
 
 #[cfg(test)]

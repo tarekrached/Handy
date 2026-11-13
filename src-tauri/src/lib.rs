@@ -314,6 +314,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             "copy_last_transcript" => {
                 tray::copy_last_transcript(app);
             }
+            "paste_last_transcript" => {
+                tray::paste_last_transcript(app);
+            }
             "unload_model" => {
                 let transcription_manager = app.state::<Arc<TranscriptionManager>>();
                 if !transcription_manager.is_model_loaded() {

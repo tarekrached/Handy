@@ -3,6 +3,7 @@
     "settings": "Configurações...",
     "checkUpdates": "Verificar Atualizações...",
     "copyLastTranscript": "Copiar última transcrição",
+    "pasteLastTranscript": "Paste Last Transcript",
     "unloadModel": "Descarregar modelo",
     "model": "Modelo",
     "quit": "Sair",

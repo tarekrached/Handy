@@ -3,6 +3,7 @@
     "settings": "Ustawienia...",
     "checkUpdates": "Sprawdź aktualizacje...",
     "copyLastTranscript": "Kopiuj ostatnią transkrypcję",
+    "pasteLastTranscript": "Paste Last Transcript",
     "unloadModel": "Zwolnij model",
     "model": "Model",
     "quit": "Zamknij",
